@@ -5,104 +5,64 @@ var scene, camera, renderer, controls, voxel, gui;
 
 var voxmesh, wiremesh;
 
-var initGui = function() {
-  voxel = {
-    material: new THREE.MeshBasicMaterial({ color: 0x00ff00,
-                                            transparent: true,
-                                            opacity: .2 }),
-    corners: {
-      topNW: new THREE.Vector3(0.5, 0.5, 0.5),
-      topNE: new THREE.Vector3(0.5, 0.5, 0.5),
-      topSE: new THREE.Vector3(0.5, 0.5, 0.5),
-      topSW: new THREE.Vector3(0.5, 0.5, 0.5),
-      botNW: new THREE.Vector3(0.5, 0.5, 0.5),
-      botNE: new THREE.Vector3(0.5, 0.5, 0.5),
-      botSE: new THREE.Vector3(0.5, 0.5, 0.5),
-      botSW: new THREE.Vector3(0.5, 0.5, 0.5)
-    }
-  }
+var TOP = 0, BOTTOM = 2,
+    SOUTH = 0, NORTH = 1, 
+    EAST = 0, WEST = 4;
 
+var CORNER_NAME = [];
+CORNER_NAME[TOP    + SOUTH + EAST] = 'topSE';
+CORNER_NAME[BOTTOM + SOUTH + EAST] = 'botSE';
+CORNER_NAME[TOP    + NORTH + EAST] = 'topNE';
+CORNER_NAME[BOTTOM + NORTH + EAST] = 'botNE';
+CORNER_NAME[TOP    + SOUTH + WEST] = 'topSW';
+CORNER_NAME[BOTTOM + SOUTH + WEST] = 'botSW';
+CORNER_NAME[TOP    + NORTH + WEST] = 'topNW';
+CORNER_NAME[BOTTOM + NORTH + WEST] = 'botNW';
+
+// y,x,z
+var CORNER_DIRECTION = [];
+CORNER_DIRECTION[TOP    + SOUTH + EAST] = [1, 1, -1];
+CORNER_DIRECTION[BOTTOM + SOUTH + EAST] = [1, -1, -1];
+CORNER_DIRECTION[TOP    + NORTH + EAST] = [-1, 1, -1];
+CORNER_DIRECTION[BOTTOM + NORTH + EAST] = [-1, -1, -1];
+CORNER_DIRECTION[TOP    + SOUTH + WEST] = [1, 1, 1];
+CORNER_DIRECTION[BOTTOM + SOUTH + WEST] = [1, -1, 1];
+CORNER_DIRECTION[TOP    + NORTH + WEST] = [-1, 1, 1];
+CORNER_DIRECTION[BOTTOM + NORTH + WEST] = [-1, -1, 1];
+
+voxel = {
+  material: new THREE.MeshBasicMaterial({ color: 0x00ff00,
+										  transparent: true,
+										  opacity: .2 }),
+  corners: []
+}
+for(var i = 0; i < 8; i++) {
+  voxel.corners[i] = new THREE.Vector3(0.5, 0.5, 0.5);
+}
+  
+var initGui = function() {
+  
   gui = new dat.GUI();
 
-  var corner;
-
-  var tnw = gui.addFolder('topNW');
-  corner = voxel.corners.topNW;
-  tnw.add(corner, 'x', 0, 1);
-  tnw.add(corner, 'y', 0, 1);
-  tnw.add(corner, 'z', 0, 1);
-
-  var tne = gui.addFolder('topNE');
-  corner = voxel.corners.topNE;
-  tne.add(corner, 'x', 0, 1);
-  tne.add(corner, 'y', 0, 1);
-  tne.add(corner, 'z', 0, 1);
-
-  var tse = gui.addFolder('topSE');
-  corner = voxel.corners.topSE;
-  tse.add(corner, 'x', 0, 1);
-  tse.add(corner, 'y', 0, 1);
-  tse.add(corner, 'z', 0, 1);
-
-  var tsw = gui.addFolder('topSW');
-  corner = voxel.corners.topSW;
-  tsw.add(corner, 'x', 0, 1);
-  tsw.add(corner, 'y', 0, 1);
-  tsw.add(corner, 'z', 0, 1);
-
-  var bnw = gui.addFolder('botNW');
-  corner = voxel.corners.botNW;
-  bnw.add(corner, 'x', 0, 1);
-  bnw.add(corner, 'y', 0, 1);
-  bnw.add(corner, 'z', 0, 1);
-
-  var bne = gui.addFolder('botNE');
-  corner = voxel.corners.botNE;
-  bne.add(corner, 'x', 0, 1);
-  bne.add(corner, 'y', 0, 1);
-  bne.add(corner, 'z', 0, 1);
-
-  var bse = gui.addFolder('botSE');
-  corner = voxel.corners.botSE;
-  bse.add(corner, 'x', 0, 1);
-  bse.add(corner, 'y', 0, 1);
-  bse.add(corner, 'z', 0, 1);
-
-  var bsw = gui.addFolder('botSW');
-  corner = voxel.corners.botSW;
-  bsw.add(corner, 'x', 0, 1);
-  bsw.add(corner, 'y', 0, 1);
-  bsw.add(corner, 'z', 0, 1);
+  for(var i = 0; i < 8; i++) {
+	var folder = gui.addFolder(CORNER_NAME[i]);
+	var corner = voxel.corners[i];
+	folder.add(corner, 'x', 0, 1);
+	folder.add(corner, 'y', 0, 1);
+	folder.add(corner, 'z', 0, 1);
+  }
 }
 
 var updateVertices = function(mesh, vox, center) {
   var geom = mesh.geometry;
   var cx = center.x, cy = center.y, cz = center.z;
   var v;
-
-  v = vox.corners.topNW;
-  geom.vertices[0].set(cx - v.x, cy + v.y, cz + v.z);
-
-  v = vox.corners.topNE;
-  geom.vertices[1].set(cx + v.x, cy + v.y, cz + v.z);
-
-  v = vox.corners.topSE;
-  geom.vertices[2].set(cx + v.x, cy + v.y, cz - v.z);
-
-  v = vox.corners.topSW;
-  geom.vertices[3].set(cx - v.x, cy + v.y, cz - v.z);
-
-  v = vox.corners.botNW;
-  geom.vertices[4].set(cx - v.x, cy - v.y, cz + v.z);
-
-  v = vox.corners.botNE;
-  geom.vertices[5].set(cx + v.x, cy - v.y, cz + v.z);
-
-  v = vox.corners.botSE;
-  geom.vertices[6].set(cx + v.x, cy - v.y, cz - v.z);
-
-  v = vox.corners.botSW;
-  geom.vertices[7].set(cx - v.x, cy - v.y, cz - v.z);
+  
+  for(var i = 0; i < 8; i++) {
+	var v = vox.corners[i];
+	var d = CORNER_DIRECTION [i];
+	geom.vertices[i].set(cx + d[0] * v.x, cy + d[1] * v.y, cz + d[2] * v.z);
+  }
 
   geom.verticesNeedUpdate = true;
 }
@@ -112,88 +72,47 @@ var meshFromVoxel = function(vox, center) {
   var cx = center.x, cy = center.y, cz = center.z;
   var corner, face, v;
 
-  // Vertex 0
-  // Top NW corner is offset in the -x, +y, +z direction
-  v = vox.corners.topNW
-  corner = new THREE.Vector3(cx - v.x, cy + v.y, cz + v.z);
-  geom.vertices.push(corner);
-
-  // Vertex 1
-  // Top NE corner is offset in the +x, +y, +z direction
-  v = vox.corners.topNE;
-  corner = new THREE.Vector3(cx + v.x, cy + v.y, cz + v.z);
-  geom.vertices.push(corner);
-
-  // Vertex 2
-  // Top SE corner is offset in the +x, +y, -z direction
-  v = vox.corners.topSE;
-  corner = new THREE.Vector3(cx + v.x, cy + v.y, cz - v.z);
-  geom.vertices.push(corner);
-
-  // Vertex 3
-  // Top SW corner is offset in the -x, +y, -z direction
-  v = vox.corners.topSW;
-  corner = new THREE.Vector3(cx - v.x, cy + v.y, cz - v.z);
-  geom.vertices.push(corner);
-
-  // Vertex 4
-  // Bottom NW corner is offset in the -x, -y, +z direction
-  v = vox.corners.botNW;
-  corner = new THREE.Vector3(cx - v.x, cy - v.y, cz + v.z);
-  geom.vertices.push(corner);
-
-  // Vertex 5
-  // Bottom NE corner is offset in the +x, -y, +z direction
-  v = vox.corners.botNE;
-  corner = new THREE.Vector3(cx + v.x, cy - v.y, cz + v.z);
-  geom.vertices.push(corner);
-
-  // Vertex 6
-  // Bottom SE corner is offset in the +x, -y, -z direction
-  v = vox.corners.botSE;
-  corner = new THREE.Vector3(cx + v.x, cy - v.y, cz - v.z);
-  geom.vertices.push(corner);
-
-  // Vertex 7
-  // Bottom SW corner is offset in the -x, -y, -z direction
-  v = vox.corners.botSW;
-  corner = new THREE.Vector3(cx - v.x, cy - v.y, cz - v.z);
-  geom.vertices.push(corner);
+  for(var i = 0; i < 8; i++) {
+    var v = vox.corners[i];
+    var d = CORNER_DIRECTION [i];
+    corner = new THREE.Vector3(cx + d[0] * v.x, cy + d[1] * v.y, cz + d[2] * v.z);
+    geom.vertices.push(corner);
+  }
 
   // Top quad
-  face = new THREE.Face3(0, 3, 2);
+  face = new THREE.Face3(TOP + SOUTH + EAST,    TOP + NORTH + EAST,    TOP + NORTH + WEST);
   geom.faces.push(face);
-  face = new THREE.Face3(0, 2, 1);
-  geom.faces.push(face);
-
-  // North quad
-  face = new THREE.Face3(0, 1, 4);
-  geom.faces.push(face);
-  face = new THREE.Face3(4, 1, 5);
-  geom.faces.push(face);
-
-  // East quad
-  face = new THREE.Face3(1, 2, 5);
-  geom.faces.push(face);
-  face = new THREE.Face3(5, 2, 6);
+  face = new THREE.Face3(TOP + SOUTH + EAST,    TOP + NORTH + WEST,    TOP + SOUTH + WEST);
   geom.faces.push(face);
 
   // South quad
-  face = new THREE.Face3(2, 3, 7);
+  face = new THREE.Face3(TOP + SOUTH + EAST,    BOTTOM + SOUTH + WEST, BOTTOM + SOUTH + EAST);
   geom.faces.push(face);
-  face = new THREE.Face3(2, 7, 6);
+  face = new THREE.Face3(TOP + SOUTH + EAST,    TOP + SOUTH + WEST,    BOTTOM + SOUTH + WEST);
   geom.faces.push(face);
 
-  // West quad
-  face = new THREE.Face3(3, 4, 7);
+  // East quad
+  face = new THREE.Face3(TOP + SOUTH + EAST,    BOTTOM + NORTH + EAST, TOP + NORTH + EAST);
   geom.faces.push(face);
-  face = new THREE.Face3(3, 0, 4);
+  face = new THREE.Face3(TOP + SOUTH + EAST,    BOTTOM + SOUTH + EAST, BOTTOM + NORTH + EAST);
   geom.faces.push(face);
 
   // Bottom quad
-  face = new THREE.Face3(6, 7, 4);
+  face = new THREE.Face3(BOTTOM + NORTH + WEST, BOTTOM + NORTH + EAST, BOTTOM + SOUTH + EAST);
   geom.faces.push(face);
-  face = new THREE.Face3(6, 4, 5);
+  face = new THREE.Face3(BOTTOM + NORTH + WEST, BOTTOM + SOUTH + EAST, BOTTOM + SOUTH + WEST);
+  geom.faces.push(face);
+
+  // North quad
+  face = new THREE.Face3(BOTTOM + NORTH + WEST, TOP + NORTH + WEST,    TOP + NORTH + EAST);
+  geom.faces.push(face);
+  face = new THREE.Face3(BOTTOM + NORTH + WEST, TOP + NORTH + EAST,    BOTTOM + NORTH + EAST);
+  geom.faces.push(face);
+
+  // West quad
+  face = new THREE.Face3(BOTTOM + NORTH + WEST, TOP + SOUTH + WEST,    TOP + NORTH + WEST);
+  geom.faces.push(face);
+  face = new THREE.Face3(BOTTOM + NORTH + WEST, BOTTOM + SOUTH + WEST, TOP + SOUTH + WEST);
   geom.faces.push(face);
 
   geom.mergeVertices();
