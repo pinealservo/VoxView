@@ -36,8 +36,17 @@ voxel = {
 										  opacity: .2 }),
   corners: []
 }
+var initialState = window.location.search.substring(1).split("&");
 for(var i = 0; i < 8; i++) {
-  voxel.corners[i] = new THREE.Vector3(0.5, 0.5, 0.5);
+  if(initialState && initialState[i]) {
+    var coordinate = initialState[i].split(",");
+    voxel.corners[i] = new THREE.Vector3(
+	  Math.abs(parseFloat(coordinate[0])),
+	  Math.abs(parseFloat(coordinate[1])),
+	  Math.abs(parseFloat(coordinate[2])));
+  } else {
+    voxel.corners[i] = new THREE.Vector3(0.5, 0.5, 0.5);
+  }
 }
   
 var initGui = function() {
@@ -56,12 +65,19 @@ var initGui = function() {
 var updateVertices = function(mesh, vox, center) {
   var geom = mesh.geometry;
   var cx = center.x, cy = center.y, cz = center.z;
-  var v;
-  
+  var voxelLink = document.getElementById('voxelLink');
+  var newHref = window.location.href.split("?")[0];
   for(var i = 0; i < 8; i++) {
 	var v = vox.corners[i];
 	var d = CORNER_DIRECTION [i];
 	geom.vertices[i].set(cx + d[0] * v.x, cy + d[1] * v.y, cz + d[2] * v.z);
+	if(voxelLink) {
+		newHref += i==0?'?':'&';
+		newHref += Math.round(v.x * 100) / 100 + "," + Math.round(v.y * 100) / 100 + "," + Math.round(v.z * 100) / 100;
+	}
+  }
+  if(voxelLink) {
+	voxelLink.href = newHref;
   }
 
   geom.verticesNeedUpdate = true;
