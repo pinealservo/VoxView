@@ -36,8 +36,7 @@ voxel = {
 										  opacity: .2 }),
   corners: []
 }
-var initialState = window.location.search.substring(1);
-initialState = initialState.split("&");
+var initialState = window.location.search.substring(1).split("&");
 for(var i = 0; i < 8; i++) {
   if(initialState && initialState[i]) {
     var coordinate = initialState[i].split(",");
