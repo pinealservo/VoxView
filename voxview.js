@@ -33,8 +33,8 @@ CORNER_DIRECTION[BOTTOM + NORTH + WEST] = new THREE.Vector3(-1, -1, 1);
 
 voxel = {
   material: new THREE.MeshBasicMaterial({ color: 0x00ff00,
-                                          transparent: true,
-                                          opacity: .2 }),
+					  transparent: true,
+					  opacity: .2 }),
   corners: []
 }
 
@@ -294,8 +294,11 @@ var update = function () {
 
   var vector = new THREE.Vector3( mouse.x, mouse.y, 1);
   projector.unprojectVector(vector, camera);
+
   var ray = new THREE.Raycaster(camera.position,
                                 vector.sub(camera.position).normalize());
+
+  var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
 
   var intersects = ray.intersectObjects(v.children);
   if (intersects.length > 0) {
