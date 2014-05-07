@@ -67,11 +67,23 @@ var initGui = function() {
 
 var updateVertices = function(mesh, vox, center) {
   var v;
+  var voxelLink = document.getElementById('voxelLink');
+  var newHref = window.location.href.split("?")[0];
 
   for (var i = 0; i < 8; i++) {
     v = vox.corners[i].clone();
     v.multiply(CORNER_DIRECTION[i]).add(center);
     mesh.vertices[i].copy(v);
+    if (voxelLink) {
+      newHref += (i == 0 ? '?' : '&');
+      newHref += Math.round(v.x * 100) / 100 + "," +
+                 Math.round(v.y * 100) / 100 + "," +
+                 Math.round(v.z * 100) / 100;
+    }
+  }
+
+  if (voxelLink) {
+    voxelLink.href = newHref;
   }
 
   mesh.traverse(function (m) { if (m.geometry) { m.geometry.verticesNeedUpdate = true;} });
@@ -297,8 +309,6 @@ var update = function () {
 
   var ray = new THREE.Raycaster(camera.position,
                                 vector.sub(camera.position).normalize());
-
-  var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
 
   var intersects = ray.intersectObjects(v.children);
   if (intersects.length > 0) {
