@@ -230,6 +230,7 @@ var init = function () {
   // Controls
   //
   controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.userPanSpeed = 0.1;
 
   //
   // Lights
