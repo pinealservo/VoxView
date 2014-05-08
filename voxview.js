@@ -33,8 +33,8 @@ CORNER_DIRECTION[BOTTOM + NORTH + WEST] = new THREE.Vector3(-1, -1, 1);
 
 voxel = {
   material: new THREE.MeshBasicMaterial({ color: 0x00ff00,
-					  transparent: true,
-					  opacity: .2 }),
+                                          transparent: true,
+                                          opacity: .2 }),
   corners: []
 }
 
