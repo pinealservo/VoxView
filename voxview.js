@@ -76,20 +76,19 @@ VoxView.UnitVoxel.prototype = {
 
 VoxView.VoxelObject3D = function(model, location) {
   THREE.Object3D.call(this);
-  var children = []
 
   var center = location || new THREE.Vector3();
-  var CORNERS = VoxView.CORNER;
 
   var verts = [];
   for (var i = 0; i < 8; i++) {
     var v = model.corners[i].clone();
-    verts.push(v.multiply(CORNERS[i].dir).add(center));
+    verts.push(v.multiply(VoxView.CORNER[i].dir).add(center));
   }
 
   var fullGeom = new THREE.Geometry();
   fullGeom.vertices = verts;
 
+  var voxObj = new THREE.Object3D();
   var makeFace = function(a1,a2,a3, b1,b2,b3, name) {
     var face, quad, geom = new THREE.Geometry();
     geom.vertices = verts;
@@ -104,28 +103,27 @@ VoxView.VoxelObject3D = function(model, location) {
 
     quad = new THREE.Mesh(geom, model.material.clone());
     quad.name = name;
-    children.push(quad);
+
+    voxObj.add(quad);
   }
 
-  makeFace(CORNERS.topSE, CORNERS.topNE, CORNERS.topNW,
-           CORNERS.topSE, CORNERS.topNW, CORNERS.topSW, "Top");
-  makeFace(CORNERS.topSE, CORNERS.botSW, CORNERS.botSE,
-           CORNERS.topSE, CORNERS.topSW, CORNERS.botSW, "South");
-  makeFace(CORNERS.topSE, CORNERS.botNE, CORNERS.topNE,
-           CORNERS.topSE, CORNERS.botSE, CORNERS.botNE, "East");
-  makeFace(CORNERS.botNW, CORNERS.botNE, CORNERS.botSE,
-           CORNERS.botNW, CORNERS.botSE, CORNERS.botSW, "Bottom");
-  makeFace(CORNERS.botNW, CORNERS.topNW, CORNERS.topNE,
-           CORNERS.botNW, CORNERS.topNE, CORNERS.botNE, "North");
-  makeFace(CORNERS.botNW, CORNERS.topSW, CORNERS.topNW,
-           CORNERS.botNW, CORNERS.botSW, CORNERS.topSW, "West");
+  var C = VoxView.CORNER;
+  makeFace(C.topSE, C.topNE, C.topNW, C.topSE, C.topNW, C.topSW, "Top");
+  makeFace(C.topSE, C.botSW, C.botSE, C.topSE, C.topSW, C.botSW, "South");
+  makeFace(C.topSE, C.botNE, C.topNE, C.topSE, C.botSE, C.botNE, "East");
+  makeFace(C.botNW, C.botNE, C.botSE, C.botNW, C.botSE, C.botSW, "Bottom");
+  makeFace(C.botNW, C.topNW, C.topNE, C.botNW, C.topNE, C.botNE, "North");
+  makeFace(C.botNW, C.topSW, C.topNW, C.botNW, C.botSW, C.topSW, "West");
 
-  this.children = children;
   this.model = model;
   this.vertices = verts;
+  this.faceMeshes = voxObj;
   this.fullMesh = new THREE.Mesh(fullGeom, model.material.clone());
   this.wireMesh = new THREE.WireframeHelper(this.fullMesh);
   this.wireMesh.material.color.set(model.material.color);
+
+  this.add(this.faceMeshes);
+  this.add(this.wireMesh);
 }
 
 VoxView.VoxelObject3D.prototype = Object.create(THREE.Object3D.prototype);
@@ -143,7 +141,72 @@ VoxView.VoxelObject3D.prototype.updateVertices = function(center) {
       m.geometry.verticesNeedUpdate = true;
     }
   });
+
+  this.remove(this.wireMesh);
+  this.wireMesh = new THREE.WireframeHelper(this.fullMesh);
+  this.wireMesh.material.color.set(this.fullMesh.material.color);
+  this.add(this.wireMesh);
 }
+
+VoxView.VoxelObject3D.prototype.selectControlPoint = function(ray) {
+  var iobj = null;
+  var intersects = ray.intersectObjects(this.faceMeshes.children);
+  if (intersects.length > 0) {
+    iobj = intersects[0].object;
+  }
+  return iobj;
+}
+
+//
+// VoxelGrid3D view object
+//
+
+VoxView.VoxelGrid3D = function () {
+  THREE.Object3D.call(this);
+
+  var SIZE = 1;
+  var STEP = 1;
+  var gridHelper;
+  var gridAxis;
+
+  gridAxis = new THREE.Object3D();
+  gridAxis.name = "Y";
+  gridAxis.visible = true;
+  for (var i = 0; i < 3; i++) {
+    gridHelper = new THREE.GridHelper(SIZE, STEP);
+    gridHelper.position = new THREE.Vector3(0, i-1, 0);
+    gridAxis.add(gridHelper);
+  }
+  this.yAxis = gridAxis;
+
+  gridAxis = new THREE.Object3D();
+  gridAxis.name = "Z";
+  gridAxis.visible = true;
+  for (var j = 0; j < 3; j++) {
+    gridHelper = new THREE.GridHelper(SIZE, STEP);
+    gridHelper.position = new THREE.Vector3(0, 0, j-1);
+    gridHelper.rotation.x = Math.PI/2;
+    gridAxis.add(gridHelper);
+  }
+  this.zAxis = gridAxis;
+
+  gridAxis = new THREE.Object3D();
+  gridAxis.name = "X";
+  gridAxis.visible = true;
+  for (var k = 0; k < 3; k++) {
+    gridHelper = new THREE.GridHelper(SIZE, STEP);
+    gridHelper.position = new THREE.Vector3(k-1, 0, 0);
+    gridHelper.rotation.z = Math.PI/2;
+    gridAxis.add(gridHelper);
+  }
+  this.xAxis = gridAxis;
+
+  this.add(this.xAxis);
+  this.add(this.yAxis);
+  this.add(this.zAxis);
+}
+
+VoxView.VoxelGrid3D.prototype = Object.create(THREE.Object3D.prototype);
 
 //
 // VoxView Application object
@@ -151,13 +214,13 @@ VoxView.VoxelObject3D.prototype.updateVertices = function(center) {
 
 VoxView.VoxViewApp = function () {
   //
-  // Set up Scene
+  // Scenes
   //
   this.scene = new THREE.Scene();
   this.sceneOrtho = new THREE.Scene();
 
   //
-  // Camera
+  // Cameras
   //
   var DISPLAY_WIDTH = window.innerWidth;
   var DISPLAY_HEIGHT = window.innerHeight;
@@ -171,7 +234,7 @@ VoxView.VoxViewApp = function () {
   this.camera.lookAt(this.scene.position);
 
   this.cameraOrtho = new THREE.OrthographicCamera(
-      -DISPLAY_WIDTH/2, DISPLAY_WIDTH/2,
+    -DISPLAY_WIDTH/2, DISPLAY_WIDTH/2,
     DISPLAY_HEIGHT/2, -DISPLAY_HEIGHT/2, 1, 10
   );
   this.cameraOrtho.position.z = 10;
@@ -183,16 +246,10 @@ VoxView.VoxViewApp = function () {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
   else
     this.renderer = new THREE.CanvasRenderer();
-  this.renderer.setSize(window.innerWidth, window.innerHeight);
+  this.renderer.setSize(DISPLAY_WIDTH, DISPLAY_HEIGHT);
   this.renderer.autoClear = false;
 
   document.body.appendChild(this.renderer.domElement);
-
-  //
-  // Controls
-  //
-  this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-  this.controls.userPanSpeed = 0.1;
 
   //
   // Lights
@@ -205,7 +262,6 @@ VoxView.VoxViewApp = function () {
   //
 
   // Visible Geometry
-  var geometry, material, wirematerial, multimaterial, cube;
   var initialState = window.location.search.substring(1);
   var cornerLocs = initialState ?
     VoxView.readQueryString(initialState) :
@@ -213,29 +269,17 @@ VoxView.VoxViewApp = function () {
   this.model = new VoxView.UnitVoxel({corners: cornerLocs});
   this.vox = new VoxView.VoxelObject3D(this.model);
   this.scene.add(this.vox);
-  this.scene.add(this.vox.wireMesh);
 
   // Voxel Grid Geometry
-  var SIZE = 1;
-  var STEP = 1;
-  var gridHelper;
-  for (var i = 0; i < 3; i++) {
-    gridHelper = new THREE.GridHelper(SIZE, STEP);
-    gridHelper.position = new THREE.Vector3(0, i-1, 0);
-    this.scene.add(gridHelper);
-  }
-  for (var j = 0; j < 3; j++) {
-    gridHelper = new THREE.GridHelper(SIZE, STEP);
-    gridHelper.position = new THREE.Vector3(0, 0, j-1);
-    gridHelper.rotation.x = Math.PI/2;
-    this.scene.add(gridHelper);
-  }
-  for (var k = 0; k < 3; k++) {
-    gridHelper = new THREE.GridHelper(SIZE, STEP);
-    gridHelper.position = new THREE.Vector3(k-1, 0, 0);
-    gridHelper.rotation.z = Math.PI/2;
-    this.scene.add(gridHelper);
-  }
+  var grid = new VoxView.VoxelGrid3D();
+  this.gridmesh = grid;
+  this.scene.add(grid);
+
+  //
+  // Controls
+  //
+  this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+  this.controls.userPanSpeed = 0.1;
 
 //  this.tooltipSprite = initTooltipSprite();
 //  this.sceneOrtho.add(tooltipSprite.sprite);
@@ -267,48 +311,43 @@ VoxView.VoxViewApp.prototype = {
 
   update: function () {
     var v = this.vox;
+
     this.controls.update();
 
     v.updateVertices();
 
-    this.scene.remove(v.wireMesh);
-    v.wireMesh = new THREE.WireframeHelper(v.fullMesh);
-    v.wireMesh.material.color.set(v.fullMesh.material.color);
-    this.scene.add(v.wireMesh);
-
-
-    var vector = new THREE.Vector3( this.mouse.x, this.mouse.y, 1);
+    var vector = new THREE.Vector3(this.mouse.x, this.mouse.y, 1);
     this.projector.unprojectVector(vector, this.camera);
-
     var ray = new THREE.Raycaster(this.camera.position,
                                   vector.sub(this.camera.position).normalize());
+    var iobj = v.selectControlPoint(ray);
 
-    var intersects = ray.intersectObjects(v.children);
-    if (intersects.length > 0) {
-      var iobj = intersects[0].object;
-
-      if (iobj != this.INTERSECTED) {
-        if (this.INTERSECTED) this.INTERSECTED.material.color.setHex(this.INTERSECTED.currentHex);
-        this.INTERSECTED = iobj;
-        this.INTERSECTED.currentHex = this.INTERSECTED.material.color.getHex();
-        this.INTERSECTED.material.color.setHex(0xffff00);
-/*
+    if (iobj && iobj != this.INTERSECTED) {
+      if (this.INTERSECTED) {
+        this.INTERSECTED.material.color.setHex(this.INTERSECTED.currentHex);
+      }
+      this.INTERSECTED = iobj;
+      this.INTERSECTED.currentHex = this.INTERSECTED.material.color.getHex();
+      this.INTERSECTED.material.color.setHex(0xffff00);
+      /*
         var tt = tooltipSprite;
         if (iobj.name) {
-          var toolText = iobj.name;
-          var textWidth = tt.context.measureText(toolText).width;
-          tt.context.clearRect(0, 0, 640, 480);
-          tt.context.fillStyle = "rgba(255,255,255,1)";
-          tt.context.fillText(toolText, 4, 30);
-          tt.texture.needsUpdate = true;
+        var toolText = iobj.name;
+        var textWidth = tt.context.measureText(toolText).width;
+        tt.context.clearRect(0, 0, 640, 480);
+        tt.context.fillStyle = "rgba(255,255,255,1)";
+        tt.context.fillText(toolText, 4, 30);
+        tt.texture.needsUpdate = true;
         } else {
-          tt.context.clearRect(0, 0, 300, 300);
-          tt.texture.needsUpdate = true;
+        tt.context.clearRect(0, 0, 300, 300);
+        tt.texture.needsUpdate = true;
         }
-*/
+      */
+    }
+    else { // no intersections
+      if (this.INTERSECTED) {
+        this.INTERSECTED.material.color.setHex(this.INTERSECTED.currentHex);
       }
-    } else { // no intersections
-      if (this.INTERSECTED) this.INTERSECTED.material.color.setHex(this.INTERSECTED.currentHex);
       this.INTERSECTED = null;
 /*
       var tt = tooltipSprite;
