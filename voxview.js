@@ -2,10 +2,11 @@
 // VoxView module object
 //
 
-var VoxView = { }
+var VoxView = { };
 
 VoxView.VERSION = [0, 0, 1];
 
+// Set up VoxView.CORNER
 ( function() {
 
   var dirs = {
@@ -157,6 +158,15 @@ VoxView.VoxelObject3D.prototype.selectControlPoint = function(ray) {
   return iobj;
 }
 
+VoxView.VoxelObject3D.prototype.startHoverEffect = function(obj) {
+  var HOVER_COLOR = 0xffff00;
+  obj.material.color.setHex(HOVER_COLOR);
+}
+
+VoxView.VoxelObject3D.prototype.stopHoverEffect = function(obj) {
+  obj.material.color.set(this.fullMesh.material.color);
+}
+
 //
 // VoxelGrid3D view object
 //
@@ -204,171 +214,28 @@ VoxView.VoxelGrid3D = function () {
   this.add(this.xAxis);
   this.add(this.yAxis);
   this.add(this.zAxis);
+  this.visible = true;
 }
 
 VoxView.VoxelGrid3D.prototype = Object.create(THREE.Object3D.prototype);
 
-//
-// VoxView Application object
-//
+VoxView.VoxelGrid3D.prototype.update = function() {
+  this.remove(this.xAxis);
+  this.remove(this.yAxis);
+  this.remove(this.zAxis);
 
-VoxView.VoxViewApp = function () {
-  //
-  // Scenes
-  //
-  this.scene = new THREE.Scene();
-  this.sceneOrtho = new THREE.Scene();
-
-  //
-  // Cameras
-  //
-  var DISPLAY_WIDTH = window.innerWidth;
-  var DISPLAY_HEIGHT = window.innerHeight;
-  var VIEW_ANGLE = 75;
-  var ASPECT_RATIO = DISPLAY_WIDTH / DISPLAY_HEIGHT;
-  var NEAR = 0.1;
-  var FAR = 10000;
-
-  this.camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT_RATIO, NEAR, FAR);
-  this.camera.position.set(3, 2, 1);
-  this.camera.lookAt(this.scene.position);
-
-  this.cameraOrtho = new THREE.OrthographicCamera(
-    -DISPLAY_WIDTH/2, DISPLAY_WIDTH/2,
-    DISPLAY_HEIGHT/2, -DISPLAY_HEIGHT/2, 1, 10
-  );
-  this.cameraOrtho.position.z = 10;
-
-  //
-  // Renderer
-  //
-  if ( Detector.webgl )
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-  else
-    this.renderer = new THREE.CanvasRenderer();
-  this.renderer.setSize(DISPLAY_WIDTH, DISPLAY_HEIGHT);
-  this.renderer.autoClear = false;
-
-  document.body.appendChild(this.renderer.domElement);
-
-  //
-  // Lights
-  //
-  var light = new THREE.AmbientLight( 0xffffff );
-  this.scene.add( light );
-
-  //
-  // Geometry
-  //
-
-  // Visible Geometry
-  var initialState = window.location.search.substring(1);
-  var cornerLocs = initialState ?
-    VoxView.readQueryString(initialState) :
-    undefined;
-  this.model = new VoxView.UnitVoxel({corners: cornerLocs});
-  this.vox = new VoxView.VoxelObject3D(this.model);
-  this.scene.add(this.vox);
-
-  // Voxel Grid Geometry
-  var grid = new VoxView.VoxelGrid3D();
-  this.gridmesh = grid;
-  this.scene.add(grid);
-
-  //
-  // Controls
-  //
-  this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-  this.controls.userPanSpeed = 0.1;
-
-//  this.tooltipSprite = initTooltipSprite();
-//  this.sceneOrtho.add(tooltipSprite.sprite);
-
-  this.projector = new THREE.Projector();
-  this.INTERSECTED = null;
-
-  var mouse = { x: 0, y: 0};
-  this.mouse = mouse;
-  var onDocumentMouseMove = function(event) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+  if (this.visible) {
+    if (this.xAxis.visible) {
+      this.add(this.xAxis);
+    }
+    if (this.yAxis.visible) {
+      this.add(this.yAxis);
+    }
+    if (this.zAxis.visible) {
+      this.add(this.zAxis);
+    }
   }
-
-  document.addEventListener('mousemove', onDocumentMouseMove, false);
-
-  VoxView.initGui(this.model);
 }
-
-VoxView.VoxViewApp.prototype = {
-
-  render: function () {
-    var r = this.renderer;
-    r.clear();
-    r.render(this.scene, this.camera);
-    r.clearDepth();
-    r.render(this.sceneOrtho, this.cameraOrtho);
-  },
-
-  update: function () {
-    var v = this.vox;
-
-    this.controls.update();
-
-    v.updateVertices();
-
-    var vector = new THREE.Vector3(this.mouse.x, this.mouse.y, 1);
-    this.projector.unprojectVector(vector, this.camera);
-    var ray = new THREE.Raycaster(this.camera.position,
-                                  vector.sub(this.camera.position).normalize());
-    var iobj = v.selectControlPoint(ray);
-
-    if (iobj && iobj != this.INTERSECTED) {
-      if (this.INTERSECTED) {
-        this.INTERSECTED.material.color.setHex(this.INTERSECTED.currentHex);
-      }
-      this.INTERSECTED = iobj;
-      this.INTERSECTED.currentHex = this.INTERSECTED.material.color.getHex();
-      this.INTERSECTED.material.color.setHex(0xffff00);
-      /*
-        var tt = tooltipSprite;
-        if (iobj.name) {
-        var toolText = iobj.name;
-        var textWidth = tt.context.measureText(toolText).width;
-        tt.context.clearRect(0, 0, 640, 480);
-        tt.context.fillStyle = "rgba(255,255,255,1)";
-        tt.context.fillText(toolText, 4, 30);
-        tt.texture.needsUpdate = true;
-        } else {
-        tt.context.clearRect(0, 0, 300, 300);
-        tt.texture.needsUpdate = true;
-        }
-      */
-    }
-    else { // no intersections
-      if (this.INTERSECTED) {
-        this.INTERSECTED.material.color.setHex(this.INTERSECTED.currentHex);
-      }
-      this.INTERSECTED = null;
-/*
-      var tt = tooltipSprite;
-      tt.context.clearRect(0, 0, 300, 300);
-      tt.texture.needsUpdate = true;
-*/
-    }
-
-  },
-
-  animate: function () {
-    var app = this;
-    var next = function () {
-      requestAnimationFrame(next);
-      app.render();
-      app.update();
-    }
-    requestAnimationFrame(next);
-  }
-
-};
 
 //
 // TooltipSprite object
@@ -379,8 +246,6 @@ VoxView.TooltipSprite = function() {
   var context = canvas.getContext('2d');
 
   context.font = "Bold 36px Arial";
-  context.fillStyle = "rgba(255,255,255,0.95)";
-  context.fillText("VoxView", 0, 20);
 
   var texture = new THREE.Texture(canvas);
   texture.needsUpdate = true;
@@ -396,9 +261,210 @@ VoxView.TooltipSprite = function() {
   this.sprite = sprite;
   this.context = context;
   this.texture = texture;
+  this.textFillStyle = "rgba(255,255,255,1)";
 }
 
 VoxView.TooltipSprite.prototype = {};
+
+VoxView.TooltipSprite.prototype.setText = function(toolText) {
+  var textWidth = this.context.measureText(toolText).width;
+  this.context.clearRect(0, 0, 640, 480);
+  this.context.fillStyle = this.textFillStyle;
+  this.context.fillText(toolText, 4, 30);
+  this.texture.needsUpdate = true;
+}
+
+VoxView.TooltipSprite.prototype.clear = function() {
+  this.context.clearRect(0, 0, 640, 480);
+  this.texture.needsUpdate = true;
+}
+
+//
+// VoxView Application object
+//
+
+VoxView.VoxViewApp = function (paramObj) {
+  var params = paramObj || {};
+
+  //
+  // Scenes
+  //
+  var scene = new THREE.Scene();
+  var sceneOrtho = new THREE.Scene();
+
+  //
+  // Cameras
+  //
+  var DISPLAY_WIDTH = params.width || window.innerWidth;
+  var DISPLAY_HEIGHT = params.height || window.innerHeight;
+  var VIEW_ANGLE = 75;
+  var ASPECT_RATIO = DISPLAY_WIDTH / DISPLAY_HEIGHT;
+  var NEAR = 0.1;
+  var FAR = 10000;
+
+  var camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT_RATIO, NEAR, FAR);
+  camera.position.set(3, 2, 1);
+  camera.lookAt(scene.position);
+
+  // The orthographic camera is for the tooltip sprite
+  var cameraOrtho = new THREE.OrthographicCamera(
+    -DISPLAY_WIDTH/2, DISPLAY_WIDTH/2,
+    DISPLAY_HEIGHT/2, -DISPLAY_HEIGHT/2, NEAR, FAR
+  );
+  cameraOrtho.position.z = 10;
+
+  //
+  // Renderer
+  //
+  var renderer;
+  if ( Detector.webgl )
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  else
+    renderer = new THREE.CanvasRenderer();
+  renderer.setSize(DISPLAY_WIDTH, DISPLAY_HEIGHT);
+  renderer.autoClear = false;
+
+  var domContainer = params.container || document.body;
+  domContainer.appendChild(renderer.domElement);
+
+  //
+  // Lights
+  //
+  var light = new THREE.AmbientLight( 0xffffff );
+  scene.add(light);
+
+  //
+  // Geometry
+  //
+
+  // Visible Geometry
+  var model = new VoxView.UnitVoxel({corners: params.cornerLocs});
+  var vox = new VoxView.VoxelObject3D(model);
+
+  scene.add(vox);
+
+  // Voxel Grid Geometry
+  var gridobj = new VoxView.VoxelGrid3D();
+
+  scene.add(gridobj);
+
+  //
+  // Controls
+  //
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  var tooltipSprite = new VoxView.TooltipSprite();
+  var projector = new THREE.Projector();
+  var mouse = { x: 0, y: 0};
+
+  controls.userPanSpeed = 0.1;
+  sceneOrtho.add(tooltipSprite.sprite);
+
+  var onDocumentMouseMove = function(event) {
+    var coords = VoxView.relMouseCoords(event, renderer.domElement);
+
+    mouse.x = (coords.x / DISPLAY_WIDTH) * 2 - 1;
+    mouse.y = - (coords.y / DISPLAY_HEIGHT) * 2 + 1;
+  }
+
+  document.addEventListener('mousemove', onDocumentMouseMove, false);
+
+  VoxView.initGui(model, gridobj);
+
+  //
+  // Initialize attributes
+  //
+  this.model = model;
+
+  this.scene = scene;
+  this.sceneOrtho = sceneOrtho;
+  this.camera = camera
+  this.cameraOrtho = cameraOrtho;
+  this.renderer = renderer;
+
+  this.vox = vox;
+  this.grid = gridobj;
+  this.tooltipSprite = tooltipSprite;
+
+  this.controls = controls;
+
+  this.projector = projector;
+  this.INTERSECTED = null;
+  this.mouse = mouse;
+}
+
+VoxView.VoxViewApp.prototype = {};
+
+VoxView.VoxViewApp.prototype.render = function () {
+  var r = this.renderer;
+  r.clear();
+  r.render(this.scene, this.camera);
+  r.clearDepth();
+  r.render(this.sceneOrtho, this.cameraOrtho);
+}
+
+VoxView.VoxViewApp.prototype.checkMouseOver = function(x, y) {
+  var vector = new THREE.Vector3(x, y, 1);
+  this.projector.unprojectVector(vector, this.camera);
+
+  var ray = new THREE.Raycaster(this.camera.position,
+                                vector.sub(this.camera.position).normalize());
+
+  var iobj = this.vox.selectControlPoint(ray);
+
+  if (iobj) {
+
+    // update tooltip if ray intersects a different object
+    if (iobj != this.INTERSECTED) {
+      if (this.INTERSECTED) {
+        this.vox.stopHoverEffect(this.INTERSECTED);
+      }
+      this.INTERSECTED = iobj;
+
+      this.vox.startHoverEffect(iobj);
+
+      if (iobj.name) {
+        this.tooltipSprite.setText(iobj.name);
+      } else {
+        this.tooltipSprite.clear();
+      }
+
+    }
+
+    // do nothing if ray intersects the same object
+
+  } else {
+
+    // no intersections, so clear any intersected record
+    if (this.INTERSECTED) {
+      this.vox.stopHoverEffect(this.INTERSECTED);
+      this.tooltipSprite.clear();
+    }
+    this.INTERSECTED = null;
+
+  }
+}
+
+VoxView.VoxViewApp.prototype.update = function () {
+  this.controls.update();
+
+  this.grid.update();
+
+  this.vox.updateVertices();
+
+  this.checkMouseOver(this.mouse.x, this.mouse.y);
+
+  VoxView.writeQueryString(this.model);
+}
+
+VoxView.VoxViewApp.prototype.animate = function () {
+  var app = this;
+  var next = function () {
+    requestAnimationFrame(next);
+    app.render();
+    app.update();
+  }
+  requestAnimationFrame(next);
+}
 
 //
 // Static helpers
@@ -427,24 +493,35 @@ VoxView.writeQueryString = function(model) {
   var voxelLink = document.getElementById('voxelLink');
   var newHref = window.location.href.split("?")[0];
 
-  for (var i = 0; i < 8; i++) {
-    var v = model.corners[i].clone();
-    v.multiply(VoxView.CORNER[i].dir).add(center);
-    if (voxelLink) {
+  if (voxelLink) {
+    for (var i = 0; i < 8; i++) {
+      var v = model.corners[i];
       newHref += (i == 0 ? '?' : '&');
       newHref += Math.round(v.x * 100) / 100 + "," +
-        Math.round(v.y * 100) / 100 + "," +
-        Math.round(v.z * 100) / 100;
+                 Math.round(v.y * 100) / 100 + "," +
+                 Math.round(v.z * 100) / 100;
     }
-  }
-
-  if (voxelLink) {
     voxelLink.href = newHref;
   }
 }
 
+VoxView.relMouseCoords = function(event, domObj) {
+  var totalOffsetX = 0;
+  var totalOffsetY = 0;
+  var canvasX = 0;
+  var canvasY = 0;
+  var currentElement = domObj;
 
-VoxView.initGui = function(model) {
+  totalOffsetX += currentElement.offsetLeft - currentElement.scrollLeft;
+  totalOffsetY += currentElement.offsetTop - currentElement.scrollTop;
+
+  canvasX = event.pageX - totalOffsetX;
+  canvasY = event.pageY - totalOffsetY;
+
+  return { x: canvasX, y: canvasY };
+}
+
+VoxView.initGui = function(model, grid) {
   gui = new dat.GUI();
 
   for (var i = 0; i < 8; i++) {
@@ -454,6 +531,8 @@ VoxView.initGui = function(model) {
     folder.add(corner, 'y', 0, 1);
     folder.add(corner, 'z', 0, 1);
   }
+  var gridFolder = gui.addFolder("Voxel Grid");
+  gridFolder.add(grid, 'visible');
 
 }
 
@@ -461,7 +540,3 @@ VoxView.initGui = function(model) {
 //
 
 // Initialize scene elements
-voxObject = new VoxView.VoxViewApp();
-
-// Start animation loop
-voxObject.animate();
