@@ -60,7 +60,7 @@ VoxView.UnitVoxel = function(params) {
   } else {
     this.corners = [];
     for (var i = 0; i < 8; i++) {
-      this.corners[i] = new THREE.Vector3(0.5, 0.5, 0.5);
+      this.corners[i] = new THREE.Vector3(0.0, 0.0, 0.0);
     }
   }
 }
@@ -69,6 +69,16 @@ VoxView.UnitVoxel.prototype = {
 
   constructor: VoxView.UnitVoxel,
 
+};
+
+VoxView.convertCornerToVertex = function(corner, direction, center) {
+    var halfVoxel = new THREE.Vector3(0.5, 0.5, 0.5);
+    var scale = new THREE.Vector3(1.5 / 127, 1.5 / 127, 1.5 / 127);
+    var v = corner.clone();
+	var scaled = v.multiply(scale);
+	var shifted = scaled.add(direction.clone().multiply(halfVoxel));
+	var centered = shifted.add(center);
+	return centered;
 };
 
 //
@@ -82,8 +92,7 @@ VoxView.VoxelObject3D = function(model, location) {
 
   var verts = [];
   for (var i = 0; i < 8; i++) {
-    var v = model.corners[i].clone();
-    verts.push(v.multiply(VoxView.CORNER[i].dir).add(center));
+    verts.push(VoxView.convertCornerToVertex(model.corners[i], VoxView.CORNER[i].dir, center));
   }
 
   var fullGeom = new THREE.Geometry();
@@ -132,9 +141,7 @@ VoxView.VoxelObject3D.prototype = Object.create(THREE.Object3D.prototype);
 VoxView.VoxelObject3D.prototype.updateVertices = function(center) {
   var origin = center || new THREE.Vector3();
   for (var i = 0; i < 8; i++) {
-    var v = this.model.corners[i].clone();
-    v.multiply(VoxView.CORNER[i].dir).add(origin);
-    this.vertices[i].copy(v);
+    this.vertices[i].copy(VoxView.convertCornerToVertex(this.model.corners[i], VoxView.CORNER[i].dir, origin));
   }
 
   this.traverse(function (m) {
@@ -174,7 +181,7 @@ VoxView.VoxelObject3D.prototype.stopHoverEffect = function(obj) {
 VoxView.VoxelGrid3D = function () {
   THREE.Object3D.call(this);
 
-  var SIZE = 1;
+  var SIZE = 2;
   var STEP = 1;
   var gridHelper;
   var gridAxis;
@@ -182,7 +189,7 @@ VoxView.VoxelGrid3D = function () {
   gridAxis = new THREE.Object3D();
   gridAxis.name = "Y";
   gridAxis.visible = true;
-  for (var i = 0; i < 3; i++) {
+  for (var i = -1; i < 4; i++) {
     gridHelper = new THREE.GridHelper(SIZE, STEP);
     gridHelper.position = new THREE.Vector3(0, i-1, 0);
     gridAxis.add(gridHelper);
@@ -192,7 +199,7 @@ VoxView.VoxelGrid3D = function () {
   gridAxis = new THREE.Object3D();
   gridAxis.name = "Z";
   gridAxis.visible = true;
-  for (var j = 0; j < 3; j++) {
+  for (var j = -1; j < 4; j++) {
     gridHelper = new THREE.GridHelper(SIZE, STEP);
     gridHelper.position = new THREE.Vector3(0, 0, j-1);
     gridHelper.rotation.x = Math.PI/2;
@@ -203,7 +210,7 @@ VoxView.VoxelGrid3D = function () {
   gridAxis = new THREE.Object3D();
   gridAxis.name = "X";
   gridAxis.visible = true;
-  for (var k = 0; k < 3; k++) {
+  for (var k = -1; k < 4; k++) {
     gridHelper = new THREE.GridHelper(SIZE, STEP);
     gridHelper.position = new THREE.Vector3(k-1, 0, 0);
     gridHelper.rotation.z = Math.PI/2;
@@ -478,9 +485,9 @@ VoxView.readQueryString = function(queryString) {
     if (initialState && initialState[i]) {
       var coordinate = initialState[i].split(",");
       corners[i] = new THREE.Vector3(
-        Math.abs(parseFloat(coordinate[0])),
-        Math.abs(parseFloat(coordinate[1])),
-        Math.abs(parseFloat(coordinate[2]))
+        parseFloat(coordinate[0]),
+        parseFloat(coordinate[1]),
+        parseFloat(coordinate[2])
       );
     } else {
       corners[i] = new THREE.Vector3(0.5, 0.5, 0.5);
@@ -527,9 +534,9 @@ VoxView.initGui = function(model, grid) {
   for (var i = 0; i < 8; i++) {
     var folder = gui.addFolder(VoxView.CORNER[i].name);
     var corner = model.corners[i];
-    folder.add(corner, 'x', 0, 1);
-    folder.add(corner, 'y', 0, 1);
-    folder.add(corner, 'z', 0, 1);
+    folder.add(corner, 'x', -127, 127);
+    folder.add(corner, 'y', -127, 127);
+    folder.add(corner, 'z', -127, 127);
   }
   var gridFolder = gui.addFolder("Voxel Grid");
   gridFolder.add(grid, 'visible');
