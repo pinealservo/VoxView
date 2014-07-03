@@ -4,7 +4,8 @@
 
 var VoxView = { };
 
-VoxView.VERSION = [0, 0, 1];
+VoxView.VERSION = [0, 1, 0];
+VoxView.RESOLUTION = 1.5;
 
 // Set up VoxView.CORNER
 ( function() {
@@ -73,7 +74,7 @@ VoxView.UnitVoxel.prototype = {
 
 VoxView.convertCornerToVertex = function(corner, direction, center) {
     var halfVoxel = new THREE.Vector3(0.5, 0.5, 0.5);
-    var scale = new THREE.Vector3(1.5 / 127, 1.5 / 127, 1.5 / 127);
+    var scale = new THREE.Vector3(1.5 / VoxView.RESOLUTION, 1.5 / VoxView.RESOLUTION, -1.5 / VoxView.RESOLUTION);
     var v = corner.clone();
 	var scaled = v.multiply(scale);
 	var shifted = scaled.add(direction.clone().multiply(halfVoxel));
@@ -181,15 +182,16 @@ VoxView.VoxelObject3D.prototype.stopHoverEffect = function(obj) {
 VoxView.VoxelGrid3D = function () {
   THREE.Object3D.call(this);
 
-  var SIZE = 2;
+  var SIZE = 1;
   var STEP = 1;
   var gridHelper;
   var gridAxis;
 
+  // inner cube
   gridAxis = new THREE.Object3D();
   gridAxis.name = "Y";
   gridAxis.visible = true;
-  for (var i = -1; i < 4; i++) {
+  for (var i = 0; i < 3; i++) {
     gridHelper = new THREE.GridHelper(SIZE, STEP);
     gridHelper.position = new THREE.Vector3(0, i-1, 0);
     gridAxis.add(gridHelper);
@@ -199,7 +201,7 @@ VoxView.VoxelGrid3D = function () {
   gridAxis = new THREE.Object3D();
   gridAxis.name = "Z";
   gridAxis.visible = true;
-  for (var j = -1; j < 4; j++) {
+  for (var j = 0; j < 3; j++) {
     gridHelper = new THREE.GridHelper(SIZE, STEP);
     gridHelper.position = new THREE.Vector3(0, 0, j-1);
     gridHelper.rotation.x = Math.PI/2;
@@ -210,7 +212,7 @@ VoxView.VoxelGrid3D = function () {
   gridAxis = new THREE.Object3D();
   gridAxis.name = "X";
   gridAxis.visible = true;
-  for (var k = -1; k < 4; k++) {
+  for (var k = 0; k < 3; k++) {
     gridHelper = new THREE.GridHelper(SIZE, STEP);
     gridHelper.position = new THREE.Vector3(k-1, 0, 0);
     gridHelper.rotation.z = Math.PI/2;
@@ -534,9 +536,9 @@ VoxView.initGui = function(model, grid) {
   for (var i = 0; i < 8; i++) {
     var folder = gui.addFolder(VoxView.CORNER[i].name);
     var corner = model.corners[i];
-    folder.add(corner, 'x', -127, 127);
-    folder.add(corner, 'y', -127, 127);
-    folder.add(corner, 'z', -127, 127);
+    folder.add(corner, 'x', -VoxView.RESOLUTION, VoxView.RESOLUTION, 0.01);
+    folder.add(corner, 'y', -VoxView.RESOLUTION, VoxView.RESOLUTION, 0.01);
+    folder.add(corner, 'z', -VoxView.RESOLUTION, VoxView.RESOLUTION, 0.01);
   }
   var gridFolder = gui.addFolder("Voxel Grid");
   gridFolder.add(grid, 'visible');
