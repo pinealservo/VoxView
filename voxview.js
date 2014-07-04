@@ -4,7 +4,8 @@
 
 var VoxView = { };
 
-VoxView.VERSION = [0, 0, 1];
+VoxView.VERSION = [0, 1, 0];
+VoxView.RESOLUTION = 1.5;
 
 // Set up VoxView.CORNER
 ( function() {
@@ -60,7 +61,7 @@ VoxView.UnitVoxel = function(params) {
   } else {
     this.corners = [];
     for (var i = 0; i < 8; i++) {
-      this.corners[i] = new THREE.Vector3(0.5, 0.5, 0.5);
+      this.corners[i] = new THREE.Vector3(0.0, 0.0, 0.0);
     }
   }
 }
@@ -69,6 +70,16 @@ VoxView.UnitVoxel.prototype = {
 
   constructor: VoxView.UnitVoxel,
 
+};
+
+VoxView.convertCornerToVertex = function(corner, direction, center) {
+    var halfVoxel = new THREE.Vector3(0.5, 0.5, 0.5);
+    var scale = new THREE.Vector3(1.5 / VoxView.RESOLUTION, 1.5 / VoxView.RESOLUTION, -1.5 / VoxView.RESOLUTION);
+    var v = corner.clone();
+	var scaled = v.multiply(scale);
+	var shifted = scaled.add(direction.clone().multiply(halfVoxel));
+	var centered = shifted.add(center);
+	return centered;
 };
 
 //
@@ -82,8 +93,7 @@ VoxView.VoxelObject3D = function(model, location) {
 
   var verts = [];
   for (var i = 0; i < 8; i++) {
-    var v = model.corners[i].clone();
-    verts.push(v.multiply(VoxView.CORNER[i].dir).add(center));
+    verts.push(VoxView.convertCornerToVertex(model.corners[i], VoxView.CORNER[i].dir, center));
   }
 
   var fullGeom = new THREE.Geometry();
@@ -132,9 +142,7 @@ VoxView.VoxelObject3D.prototype = Object.create(THREE.Object3D.prototype);
 VoxView.VoxelObject3D.prototype.updateVertices = function(center) {
   var origin = center || new THREE.Vector3();
   for (var i = 0; i < 8; i++) {
-    var v = this.model.corners[i].clone();
-    v.multiply(VoxView.CORNER[i].dir).add(origin);
-    this.vertices[i].copy(v);
+    this.vertices[i].copy(VoxView.convertCornerToVertex(this.model.corners[i], VoxView.CORNER[i].dir, origin));
   }
 
   this.traverse(function (m) {
@@ -179,6 +187,7 @@ VoxView.VoxelGrid3D = function () {
   var gridHelper;
   var gridAxis;
 
+  // inner cube
   gridAxis = new THREE.Object3D();
   gridAxis.name = "Y";
   gridAxis.visible = true;
@@ -478,9 +487,9 @@ VoxView.readQueryString = function(queryString) {
     if (initialState && initialState[i]) {
       var coordinate = initialState[i].split(",");
       corners[i] = new THREE.Vector3(
-        Math.abs(parseFloat(coordinate[0])),
-        Math.abs(parseFloat(coordinate[1])),
-        Math.abs(parseFloat(coordinate[2]))
+        parseFloat(coordinate[0]),
+        parseFloat(coordinate[1]),
+        parseFloat(coordinate[2])
       );
     } else {
       corners[i] = new THREE.Vector3(0.5, 0.5, 0.5);
@@ -527,9 +536,9 @@ VoxView.initGui = function(model, grid) {
   for (var i = 0; i < 8; i++) {
     var folder = gui.addFolder(VoxView.CORNER[i].name);
     var corner = model.corners[i];
-    folder.add(corner, 'x', 0, 1);
-    folder.add(corner, 'y', 0, 1);
-    folder.add(corner, 'z', 0, 1);
+    folder.add(corner, 'x', -VoxView.RESOLUTION, VoxView.RESOLUTION, 0.01);
+    folder.add(corner, 'y', -VoxView.RESOLUTION, VoxView.RESOLUTION, 0.01);
+    folder.add(corner, 'z', -VoxView.RESOLUTION, VoxView.RESOLUTION, 0.01);
   }
   var gridFolder = gui.addFolder("Voxel Grid");
   gridFolder.add(grid, 'visible');
