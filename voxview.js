@@ -273,6 +273,9 @@ VoxView.VoxelGrid3D.prototype.update = function() {
   this.remove(this.xAxis);
   this.remove(this.yAxis);
   this.remove(this.zAxis);
+  this.remove(this.xoAxis);
+  this.remove(this.yoAxis);
+  this.remove(this.zoAxis);
 
   if (this.visible) {
     if (this.xAxis.visible) {
@@ -283,6 +286,15 @@ VoxView.VoxelGrid3D.prototype.update = function() {
     }
     if (this.zAxis.visible) {
       this.add(this.zAxis);
+    }
+    if (this.xAxis.visible) {
+      this.add(this.xoAxis);
+    }
+    if (this.yAxis.visible) {
+      this.add(this.yoAxis);
+    }
+    if (this.zAxis.visible) {
+      this.add(this.zoAxis);
     }
   }
 }
