@@ -182,12 +182,12 @@ VoxView.VoxelObject3D.prototype.stopHoverEffect = function(obj) {
 VoxView.VoxelGrid3D = function () {
   THREE.Object3D.call(this);
 
-  var SIZE = 1;
-  var STEP = 1;
   var gridHelper;
   var gridAxis;
 
   // inner cube
+  var SIZE = 1;
+  var STEP = 1;
   gridAxis = new THREE.Object3D();
   gridAxis.name = "Y";
   gridAxis.visible = true;
@@ -220,9 +220,50 @@ VoxView.VoxelGrid3D = function () {
   }
   this.xAxis = gridAxis;
 
+  // outer cube
+  var SIZE = 2;
+  var STEP = 1;
+  gridAxis = new THREE.Object3D();
+  gridAxis.name = "YO";
+  gridAxis.visible = true;
+  for (var i = -1; i < 4; i+=4) {
+    gridHelper = new THREE.GridHelper(SIZE, STEP);
+    gridHelper.setColors(0x444444,0x444444);
+    gridHelper.position = new THREE.Vector3(0, i-1, 0);
+    gridAxis.add(gridHelper);
+  }
+  this.yoAxis = gridAxis;
+
+  gridAxis = new THREE.Object3D();
+  gridAxis.name = "ZO";
+  gridAxis.visible = true;
+  for (var j = -1; j < 4; j+=4) {
+    gridHelper = new THREE.GridHelper(SIZE, STEP);
+    gridHelper.setColors(0x444444,0x444444);
+    gridHelper.position = new THREE.Vector3(0, 0, j-1);
+    gridHelper.rotation.x = Math.PI/2;
+    gridAxis.add(gridHelper);
+  }
+  this.zoAxis = gridAxis;
+
+  gridAxis = new THREE.Object3D();
+  gridAxis.name = "XO";
+  gridAxis.visible = true;
+  for (var k = -1; k < 4; k+=4) {
+    gridHelper = new THREE.GridHelper(SIZE, STEP);
+    gridHelper.setColors(0x444444,0x444444);
+    gridHelper.position = new THREE.Vector3(k-1, 0, 0);
+    gridHelper.rotation.z = Math.PI/2;
+    gridAxis.add(gridHelper);
+  }
+  this.xoAxis = gridAxis;
+
   this.add(this.xAxis);
   this.add(this.yAxis);
   this.add(this.zAxis);
+  this.add(this.xoAxis);
+  this.add(this.yoAxis);
+  this.add(this.zoAxis);
   this.visible = true;
 }
 
@@ -232,6 +273,9 @@ VoxView.VoxelGrid3D.prototype.update = function() {
   this.remove(this.xAxis);
   this.remove(this.yAxis);
   this.remove(this.zAxis);
+  this.remove(this.xoAxis);
+  this.remove(this.yoAxis);
+  this.remove(this.zoAxis);
 
   if (this.visible) {
     if (this.xAxis.visible) {
@@ -242,6 +286,15 @@ VoxView.VoxelGrid3D.prototype.update = function() {
     }
     if (this.zAxis.visible) {
       this.add(this.zAxis);
+    }
+    if (this.xAxis.visible) {
+      this.add(this.xoAxis);
+    }
+    if (this.yAxis.visible) {
+      this.add(this.yoAxis);
+    }
+    if (this.zAxis.visible) {
+      this.add(this.zoAxis);
     }
   }
 }
